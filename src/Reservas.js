@@ -1,149 +1,188 @@
 const express = require('express');
-const fs = require('fs');
+const fs = require('fs').promises; 
 const path = require('path');
 
 const router = express.Router();
 const dataFilePath = path.join(__dirname, '../../data/reservas.json');
 
-const getReservas = () => {
-    if (!fs.existsSync(dataFilePath)) return [];
-    const data = fs.readFileSync(dataFilePath, 'utf-8');
-    return data ? JSON.parse(data) : [];
-};
 
-const saveReservas = (reservas) => {
-    fs.writeFileSync(dataFilePath, JSON.stringify(reservas, null, 2));
-};
 
-router.post('/reservas', (req, res) => {
-    const { salaId, responsavel, inicio, fim } = req.body;
-
-    if (!salaId || !responsavel || !inicio || !fim) {
-        return res.status(400).json({ erro: 'Todos os campos são obrigatórios' });
-    }
-
-    const dataInicio = new Date(inicio);
-    const dataFim = new Date(fim);
-    const agora = new Date();
-
-    if (dataInicio >= dataFim) {
-        return res.status(400).json({ erro: 'O início deve ser anterior ao fim' });
-    }
-
-    if (dataInicio < agora) {
-        return res.status(400).json({ erro: 'Não é possível reservar em um horário no passado' });
-    }
-
-    const reservas = getReservas();
-
-    const hasConflict = reservas.some(reserva => {
-        if (reserva.salaId !== salaId) return false;
+const getReservas = async () => {
+    try {
+        const data = await fs.readFile(dataFilePath, 'utf-8');
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
         
-        const reservaInicio = new Date(reserva.inicio);
-        const reservaFim = new Date(reserva.fim);
-
-        return dataInicio < reservaFim && dataFim > reservaInicio;
-    });
-
-    if (hasConflict) {
-        return res.status(409).json({ erro: 'Conflito de horário nesta sala' });
+        if (error.code === 'ENOENT') return [];
+        throw error;
     }
+};
 
-    const novaReserva = {
-        id: Date.now().toString(),
-        salaId,
-        responsavel,
-        inicio,
-        fim
-    };
+const saveReservas = async (reservas) => {
+    const tempPath = `${dataFilePath}.tmp`;
+    await fs.writeFile(tempPath, JSON.stringify(reservas, null, 2));
+    await fs.rename(tempPath, dataFilePath);
+};
 
-    reservas.push(novaReserva);
-    saveReservas(reservas);
+const isDataValida = (data) => data instanceof Date && !isNaN(data.getTime());
 
-    return res.status(201).json(novaReserva);
-});
+//Rotas de Reservas 
 
-router.get('/reservas', (req, res) => {
-    const { sala, dataInicio, dataFim } = req.query;
-    let reservas = getReservas();
+router.post('/reservas', async (req, res) => {
+    try {
+        const { salaId, responsavel, inicio, fim } = req.body;
 
-    if (sala) {
-        reservas = reservas.filter(r => r.salaId === sala);
-    }
+        if (!salaId || !responsavel || !inicio || !fim) {
+            return res.status(400).json({ erro: 'Todos os campos são obrigatórios' });
+        }
 
-    if (dataInicio && dataFim) {
-        const filtroInicio = new Date(dataInicio);
-        const filtroFim = new Date(dataFim);
-        reservas = reservas.filter(r => {
-            const rInicio = new Date(r.inicio);
-            return rInicio >= filtroInicio && rInicio <= filtroFim;
+        const dataInicio = new Date(inicio);
+        const dataFim = new Date(fim);
+        const agora = new Date();
+
+      
+        if (!isDataValida(dataInicio) || !isDataValida(dataFim)) {
+            return res.status(400).json({ erro: 'Formato de data inválido' });
+        }
+
+        if (dataInicio >= dataFim) {
+            return res.status(400).json({ erro: 'O início deve ser anterior ao fim' });
+        }
+
+        if (dataInicio < agora) {
+            return res.status(400).json({ erro: 'Não é possível reservar em um horário no passado' });
+        }
+
+        const reservas = await getReservas();
+
+ 
+        const hasConflict = reservas.some(reserva => {
+            if (reserva.salaId !== salaId) return false;
+            
+            const reservaInicio = new Date(reserva.inicio);
+            const reservaFim = new Date(reserva.fim);
+
+   
+            return dataInicio < reservaFim && dataFim > reservaInicio;
         });
-    }
 
-    return res.status(200).json(reservas);
+        if (hasConflict) {
+            return res.status(409).json({ erro: 'Conflito de horário nesta sala' });
+        }
+
+        const novaReserva = {
+            id: Date.now().toString(),
+            salaId,
+            responsavel,
+            inicio: dataInicio.toISOString(),
+            fim: dataFim.toISOString()
+        };
+
+        reservas.push(novaReserva);
+        await saveReservas(reservas);
+
+        return res.status(201).json(novaReserva);
+    } catch (error) {
+        return res.status(500).json({ erro: 'Erro interno no servidor' });
+    }
 });
 
-router.delete('/reservas/:id', (req, res) => {
-    const { id } = req.params;
-    let reservas = getReservas();
-    
-    const index = reservas.findIndex(r => r.id === id);
-    if (index === -1) {
-        return res.status(404).json({ erro: 'Reserva não encontrada' });
+router.get('/reservas', async (req, res) => {
+    try {
+        const { sala, dataInicio, dataFim } = req.query;
+        let reservas = await getReservas();
+
+        if (sala) {
+            reservas = reservas.filter(r => r.salaId === sala);
+        }
+
+        if (dataInicio && dataFim) {
+            const filtroInicio = new Date(dataInicio);
+            const filtroFim = new Date(dataFim);
+
+            if (isDataValida(filtroInicio) && isDataValida(filtroFim)) {
+                reservas = reservas.filter(r => {
+                    const rInicio = new Date(r.inicio);
+                    return rInicio >= filtroInicio && rInicio <= filtroFim;
+                });
+            }
+        }
+
+        return res.status(200).json(reservas);
+    } catch (error) {
+        return res.status(500).json({ erro: 'Erro interno no servidor' });
     }
-
-    reservas.splice(index, 1);
-    saveReservas(reservas);
-
-    return res.status(200).json({ mensagem: 'Reserva cancelada com sucesso' });
 });
 
-router.get('/salas/:id/disponibilidade', (req, res) => {
-    const { id } = req.params;
-    const { data } = req.query;
+router.delete('/reservas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reservas = await getReservas();
+        
+        const index = reservas.findIndex(r => r.id === id);
+        if (index === -1) {
+            return res.status(404).json({ erro: 'Reserva não encontrada' });
+        }
 
-    if (!data) {
-        return res.status(400).json({ erro: 'Parâmetro data (YYYY-MM-DD) é obrigatório' });
+        reservas.splice(index, 1);
+        await saveReservas(reservas);
+
+        return res.status(200).json({ mensagem: 'Reserva cancelada com sucesso' });
+    } catch (error) {
+        return res.status(500).json({ erro: 'Erro interno no servidor' });
     }
+});
 
-    const reservas = getReservas();
-    
-    const reservasDoDia = reservas.filter(r => {
-        return r.salaId === id && r.inicio.startsWith(data);
-    });
+router.get('/salas/:id/disponibilidade', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data } = req.query;
 
-    reservasDoDia.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+        if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+            return res.status(400).json({ erro: 'Parâmetro data (YYYY-MM-DD) é obrigatório' });
+        }
 
-    const horarioAbertura = new Date(`${data}T08:00:00`);
-    const horarioFechamento = new Date(`${data}T22:00:00`);
+        const reservas = await getReservas();
+        
+        const reservasDoDia = reservas.filter(r => {
+            return r.salaId === id && r.inicio.startsWith(data);
+        });
 
-    const horariosLivres = [];
-    let ponteiroTempo = horarioAbertura;
+        reservasDoDia.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
 
-    reservasDoDia.forEach(reserva => {
-        const inicioReserva = new Date(reserva.inicio);
-        const fimReserva = new Date(reserva.fim);
+        const horarioAbertura = new Date(`${data}T08:00:00Z`);
+        const horarioFechamento = new Date(`${data}T22:00:00Z`);
 
-        if (ponteiroTempo < inicioReserva) {
+        const horariosLivres = [];
+        let ponteiroTempo = horarioAbertura;
+
+        reservasDoDia.forEach(reserva => {
+            const inicioReserva = new Date(reserva.inicio);
+            const fimReserva = new Date(reserva.fim);
+
+            if (ponteiroTempo < inicioReserva) {
+                horariosLivres.push({
+                    inicio: ponteiroTempo.toISOString(),
+                    fim: inicioReserva.toISOString()
+                });
+            }
+            
+            if (ponteiroTempo < fimReserva) {
+                ponteiroTempo = fimReserva;
+            }
+        });
+
+        if (ponteiroTempo < horarioFechamento) {
             horariosLivres.push({
                 inicio: ponteiroTempo.toISOString(),
-                fim: inicioReserva.toISOString()
+                fim: horarioFechamento.toISOString()
             });
         }
-        
-        if (ponteiroTempo < fimReserva) {
-            ponteiroTempo = fimReserva;
-        }
-    });
 
-    if (ponteiroTempo < horarioFechamento) {
-        horariosLivres.push({
-            inicio: ponteiroTempo.toISOString(),
-            fim: horarioFechamento.toISOString()
-        });
+        return res.status(200).json({ disponivel: horariosLivres });
+    } catch (error) {
+        return res.status(500).json({ erro: 'Erro interno no servidor' });
     }
-
-    return res.status(200).json({ disponivel: horariosLivres });
 });
 
 module.exports = router;
