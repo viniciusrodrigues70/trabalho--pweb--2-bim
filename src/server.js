@@ -1,9 +1,10 @@
 const express = require("express");
-
+const reservasRoutes = require("./routes/Reservas")
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(reservasRoutes);
 
 // Rota inicial — já implementada. Use-a para verificar que o servidor sobe.
 // Os testes de correção esperam que GET / responda com status 200.
