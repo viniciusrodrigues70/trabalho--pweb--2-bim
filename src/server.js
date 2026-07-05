@@ -1,25 +1,29 @@
-const express = require("express");
+const express = require('express');
+const path = require('path');
+const rotasSalas = require('./routes/salas');
+const rotasReservas = require('./routes/reservas');
+const rotasUsuarios = require('./routes/usuarios');
+const rotasRelatorios = require('./routes/relatorios'); 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Rota inicial — já implementada. Use-a para verificar que o servidor sobe.
-// Os testes de correção esperam que GET / responda com status 200.
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get("/", (req, res) => {
-  res.json({
-    project: "Sistema de Reserva de Salas",
-    status: "ok",
-    message: "Servidor no ar. Implemente as rotas descritas no README.",
-  });
+  res.json({ project: "Sistema de Reserva de Salas", status: "ok" });
 });
 
-// TODO: implemente aqui as rotas do trabalho (veja o README.md).
-//       Sugestão: organize por recurso em src/routes/ e use express.Router().
+app.use('/salas', rotasSalas);
+app.use('/reservas', rotasReservas);
+app.use('/usuarios', rotasUsuarios);
+app.use('/relatorios', rotasRelatorios); 
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando com sucesso em http://localhost:${PORT}`);
 });
 
 module.exports = app;
