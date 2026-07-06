@@ -9,6 +9,17 @@
     "dev": "node --watch src/server.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
-  }
+    "express": "^4.22.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/viniciusrodrigues70/trabalho--pweb--2-bim.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/viniciusrodrigues70/trabalho--pweb--2-bim/issues"
+  },
+  "homepage": "https://github.com/viniciusrodrigues70/trabalho--pweb--2-bim#readme"
 }

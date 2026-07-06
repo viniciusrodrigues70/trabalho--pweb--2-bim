@@ -85,8 +85,8 @@ router.get('/:id/disponibilidade', (req, res) => {
     const reservasDoDia = (banco.reservas || []).filter(r => r.salaId === id && r.inicio.startsWith(data));
     reservasDoDia.sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
 
-    const abertura = new Date(${data}T08:00:00Z);
-    const fechamento = new Date(${data}T22:00:00Z);
+    const abertura = new Date(`${data}T08:00:00Z`);
+    const fechamento = new Date(`${data}T22:00:00Z`);
     const livres = [];
     let ponteiro = abertura;
 
