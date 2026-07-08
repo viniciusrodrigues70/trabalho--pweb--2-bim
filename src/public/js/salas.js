@@ -1,6 +1,4 @@
-// Este arquivo gerencia a vitrine (index.html) e o CRUD (salas.html)
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica para o index.html ---
     const vitrineContainer = document.getElementById('container-vitrine-salas');
     if (vitrineContainer) {
         carregarVitrineSalas();
@@ -10,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Lógica para o salas.html ---
     const crudContainer = document.getElementById('lista-controle-salas');
     if (crudContainer) {
         carregarGerenciadorSalas();
@@ -19,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Funções da Vitrine (GET)
 async function carregarVitrineSalas(capacidadeMin = '') {
     const container = document.getElementById('container-vitrine-salas');
     try {
@@ -62,7 +58,6 @@ async function carregarVitrineSalas(capacidadeMin = '') {
     } catch (error) { console.error(error); }
 }
 
-// Funções do CRUD (GET, POST, PUT, DELETE)
 async function carregarGerenciadorSalas() {
     const container = document.getElementById('lista-controle-salas');
     try {
@@ -123,7 +118,6 @@ async function salvarSala(e) {
     }
 }
 
-// Vinculadas ao escopo global (window) para funcionarem nos botões dinâmicos do HTML
 window.carregarDetalhes = async function(id) {
     const res = await fetch(`/salas/${id}`);
     const sala = await res.json();

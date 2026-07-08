@@ -1,12 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Autopreencher sala vinda da vitrine (via URL)
     const params = new URLSearchParams(window.location.search);
     if(params.get('salaId')) {
         document.getElementById('res-sala-id').value = params.get('salaId');
         document.getElementById('disp-sala-id').value = params.get('salaId');
     }
 
-// GET Disponibilidade
     document.getElementById('btn-consultar-disponibilidade').addEventListener('click', async () => {
         const salaId = document.getElementById('disp-sala-id').value.trim();
         const data = document.getElementById('disp-data-alvo').value;
@@ -17,26 +15,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const output = await res.json();
             const div = document.getElementById('wrapper-resposta-disponibilidade');
 
-            // O seu Back-end devolve um array chamado "disponivel"
             if(output.disponivel && output.disponivel.length > 0) {
-                
-                // Transforma os dados complicados em texto legível (Extrai apenas as horas)
                 const blocosFormatados = output.disponivel.map(bloco => {
                     const horaIn = new Date(bloco.inicio).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
                     const horaFim = new Date(bloco.fim).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
                     return `[${horaIn} às ${horaFim}]`;
                 });
 
-                // Verifica se a sala está 100% livre (o Back-end devolve o bloco total 08:00 - 22:00)
                 if (blocosFormatados.length === 1 && blocosFormatados[0] === '[08:00 às 22:00]') {
                     div.innerHTML = `✅ Sala totalmente livre neste dia (08:00 às 22:00).`;
                 } else {
-                    // Mostra as "fatias" de horários que sobraram
                     div.innerHTML = `🕒 Intervalos Livres: <span style="color:#fff;">${blocosFormatados.join(' | ')}</span>`;
                 }
                 
             } else {
-                // Se o array vier vazio, significa que não há espaços livres entre as 08h e as 22h
                 div.innerHTML = `❌ Sala totalmente lotada neste dia! Não há horários livres.`;
             }
         } catch (erro) {
@@ -45,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // POST Reserva (Trata erro 409 conflito)
     document.getElementById('form-comprar-reserva').addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
@@ -78,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderizarReservasGerais();
 });
 
-// GET Reservas e DELETE
 async function renderizarReservasGerais(salaFiltro = '') {
     let url = salaFiltro ? `/reservas?sala=${salaFiltro}` : '/reservas';
     const response = await fetch(url);
